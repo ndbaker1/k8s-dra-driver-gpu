@@ -46,7 +46,15 @@ const (
 	defaultCDIRoot = "/var/run/cdi"
 )
 
-type CDIHandler struct {
+type CDIHandler interface {
+	CreateStandardDeviceSpecFile(allocatable AllocatableDevices) error
+	CreateClaimSpecFile(claimUID string, preparedDevices PreparedDevices) error
+	DeleteClaimSpecFile(claimUID string) error
+	GetStandardDevice(device *AllocatableDevice) string
+	GetClaimDevice(claimUID string, device *AllocatableDevice, containerEdits *cdiapi.ContainerEdits) string
+}
+
+type cdiHandler struct {
 	logger            *logrus.Logger
 	nvml              nvml.Interface
 	nvdevice          nvdevice.Interface
@@ -64,8 +72,8 @@ type CDIHandler struct {
 	claimClass  string
 }
 
-func NewCDIHandler(opts ...cdiOption) (*CDIHandler, error) {
-	h := &CDIHandler{}
+func NewCDIHandler(opts ...cdiOption) (*cdiHandler, error) {
+	h := &cdiHandler{}
 	for _, opt := range opts {
 		opt(h)
 	}
@@ -139,7 +147,7 @@ func NewCDIHandler(opts ...cdiOption) (*CDIHandler, error) {
 	return h, nil
 }
 
-func (cdi *CDIHandler) CreateStandardDeviceSpecFile(allocatable AllocatableDevices) error {
+func (cdi *cdiHandler) CreateStandardDeviceSpecFile(allocatable AllocatableDevices) error {
 	// Initialize NVML in order to get the device edits.
 	if r := cdi.nvml.Init(); r != nvml.SUCCESS {
 		return fmt.Errorf("failed to initialize NVML: %v", r)
@@ -202,7 +210,7 @@ func (cdi *CDIHandler) CreateStandardDeviceSpecFile(allocatable AllocatableDevic
 	return cdi.cache.WriteSpec(spec.Raw(), specName)
 }
 
-func (cdi *CDIHandler) CreateClaimSpecFile(claimUID string, preparedDevices PreparedDevices) error {
+func (cdi *cdiHandler) CreateClaimSpecFile(claimUID string, preparedDevices PreparedDevices) error {
 	// Generate claim specific specs for each device.
 	var deviceSpecs []cdispec.Device
 	for _, group := range preparedDevices {
@@ -254,19 +262,19 @@ func (cdi *CDIHandler) CreateClaimSpecFile(claimUID string, preparedDevices Prep
 	return cdi.cache.WriteSpec(spec.Raw(), specName)
 }
 
-func (cdi *CDIHandler) DeleteClaimSpecFile(claimUID string) error {
+func (cdi *cdiHandler) DeleteClaimSpecFile(claimUID string) error {
 	specName := cdiapi.GenerateTransientSpecName(cdi.vendor, cdi.claimClass, claimUID)
 	return cdi.cache.RemoveSpec(specName)
 }
 
-func (cdi *CDIHandler) GetStandardDevice(device *AllocatableDevice) string {
+func (cdi *cdiHandler) GetStandardDevice(device *AllocatableDevice) string {
 	if device.Type() == ComputeDomainChannelType {
 		return ""
 	}
 	return cdiparser.QualifiedName(cdiVendor, cdiDeviceClass, "all")
 }
 
-func (cdi *CDIHandler) GetClaimDevice(claimUID string, device *AllocatableDevice, containerEdits *cdiapi.ContainerEdits) string {
+func (cdi *cdiHandler) GetClaimDevice(claimUID string, device *AllocatableDevice, containerEdits *cdiapi.ContainerEdits) string {
 	if containerEdits == nil {
 		return ""
 	}

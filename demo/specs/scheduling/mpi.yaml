@@ -1,0 +1,95 @@
+# an mpi workload that may/may not use volcano as the scheduling backend.
+# it has two competing compute domains.
+---
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: compute-domain-1
+spec:
+  numNodes: 10
+  channel:
+    resourceClaimTemplate:
+      name: compute-domain-1-channel
+---
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: scheduling-1
+spec:
+  slotsPerWorker: 1
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - image: public.ecr.aws/docker/library/bash
+            name: mpi-launcher
+            command: ["bash", "-c", "echo 'hello!' && sleep 10"]
+    Worker:
+      replicas: 10
+      template:
+        metadata:
+          labels:
+            nvbandwidth-test-replica: mpi-worker
+        spec:
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchExpressions:
+                  - key: nvbandwidth-test-replica
+                    operator: In
+                    values: [mpi-worker]
+                topologyKey: nvidia.com/gpu.clique
+          containers:
+          - image: public.ecr.aws/docker/library/bash
+            name: mpi-worker
+            command: ["bash", "-c", "echo 'hello!' && sleep 10"]
+            resources:
+              claims:
+              - name: imex-channel
+          resourceClaims:
+          - name: imex-channel
+            resourceClaimTemplateName: compute-domain-1-channel
+
+---
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: compute-domain-2
+spec:
+  numNodes: 10
+  channel:
+    resourceClaimTemplate:
+      name: compute-domain-2-channel
+---
+apiVersion: kubeflow.org/v2beta1
+kind: MPIJob
+metadata:
+  name: scheduling-2
+spec:
+  slotsPerWorker: 1
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+        spec:
+          containers:
+          - image: public.ecr.aws/docker/library/bash
+            name: mpi-launcher
+            command: ["bash", "-c", "echo 'hello!' && sleep 10"]
+    Worker:
+      replicas: 10
+      template:
+        spec:
+          containers:
+          - image: public.ecr.aws/docker/library/bash
+            name: mpi-worker
+            command: ["bash", "-c", "echo 'hello!' && sleep 10"]
+            resources:
+              claims:
+              - name: imex-channel
+          resourceClaims:
+          - name: imex-channel
+            resourceClaimTemplateName: compute-domain-2-channel

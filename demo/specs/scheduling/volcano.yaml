@@ -1,0 +1,85 @@
+# a test using the volcano scheduler with competing compute domains.
+---
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: compute-domain-1
+spec:
+  numNodes: 10
+  channel:
+    resourceClaimTemplate:
+      name: compute-domain-1-channel
+---
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: compute-domain-2
+spec:
+  numNodes: 10
+  channel:
+    resourceClaimTemplate:
+      name: compute-domain-2-channel
+---
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: gang-scheduling-job-1
+spec:
+  minAvailable: 10
+  schedulerName: volcano
+  plugins:
+    ssh: []
+    svc: []
+  queue: default
+  tasks:
+    - replicas: 10
+      name: gang-task
+      template:
+        metadata:
+          labels:
+            app: gang-app
+        spec:
+          restartPolicy: Never
+          schedulerName: volcano
+          containers:
+          - image: public.ecr.aws/docker/library/bash
+            name: gang-container
+            command: ["bash", "-c", "echo 'hello!' && sleep 10"]
+            resources:
+              claims:
+              - name: imex-channel
+          resourceClaims:
+          - name: imex-channel
+            resourceClaimTemplateName: compute-domain-1-channel
+---
+apiVersion: batch.volcano.sh/v1alpha1
+kind: Job
+metadata:
+  name: gang-scheduling-job-2
+spec:
+  minAvailable: 10
+  schedulerName: volcano
+  plugins:
+    ssh: []
+    svc: []
+  queue: default
+  tasks:
+    - replicas: 10
+      name: gang-task
+      template:
+        metadata:
+          labels:
+            app: gang-app
+        spec:
+          restartPolicy: Never
+          schedulerName: volcano
+          containers:
+          - image: public.ecr.aws/docker/library/bash
+            name: gang-container
+            command: ["bash", "-c", "echo 'hello!' && sleep 10"]
+            resources:
+              claims:
+              - name: imex-channel
+          resourceClaims:
+          - name: imex-channel
+            resourceClaimTemplateName: compute-domain-2-channel

@@ -34,7 +34,8 @@ ARG GOLANG_VERSION=x.x.x
 ARG BUILDARCH
 ARG TARGETARCH
 
-RUN apt-get update && \
+RUN rm /etc/apt/sources.list.d/cuda.list && \
+    apt-get update && \
     apt-get install -y \
         wget \
         make \

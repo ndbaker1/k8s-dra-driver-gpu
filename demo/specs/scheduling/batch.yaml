@@ -1,0 +1,32 @@
+# basic example of scheduling on the entire NVL72 without and complex scheduling
+---
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: compute-domain
+spec:
+  numNodes: 18
+  channel:
+    resourceClaimTemplate:
+      name: compute-domain-channel
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: scheduling-test
+spec:
+  completions: 18
+  parallelism: 18 
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: worker
+        image: public.ecr.aws/docker/library/bash
+        command: ["bash", "-c", "echo 'hello!' && sleep 120"]
+        resources:
+          claims:
+          - name: compute-domain-channel
+      resourceClaims:
+      - name: compute-domain-channel
+        resourceClaimTemplateName: compute-domain-channel

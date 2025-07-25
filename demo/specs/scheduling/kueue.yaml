@@ -1,0 +1,12 @@
+---
+apiVersion: resource.nvidia.com/v1beta1
+kind: ComputeDomain
+metadata:
+  name: scheduling-test-compute-domain
+spec:
+  numNodes: 18
+  channel:
+    resourceClaimTemplate:
+      name: scheduling-test-compute-domain-channel
+---
+# TODO: kueue resouces

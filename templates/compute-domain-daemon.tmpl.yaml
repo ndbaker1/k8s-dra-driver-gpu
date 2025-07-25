@@ -24,7 +24,8 @@ spec:
       # Run the compute domain daemon
       - name: compute-domain-daemon
         image: {{ .ImageName }}
-        command: ["compute-domain-daemon", "-v", "6", "run"]
+        imagePullPolicy: 
+        command: ["bash", "-c", "echo 'fake daemon!' && sleep infinity"]
         env:
         - name: NODE_NAME
           valueFrom:
@@ -40,21 +41,6 @@ spec:
         resources:
           claims:
           - name: compute-domain-daemon
-        startupProbe:
-          exec:
-            command: ["compute-domain-daemon", "-v", "6", "check"]
-          initialDelaySeconds: 1
-          periodSeconds: 1
-          timeoutSeconds: 10
-          failureThreshold: 10
-        livenessProbe:
-          exec:
-            command: ["compute-domain-daemon", "-v", "6", "check"]
-          # No initialDelaySeconds needed because there is a startupProbe.
-          # Require 5*10 seconds of continuous failure before killing processes
-          # (that gives business logic time to recover via its own mechanisms).
-          periodSeconds: 5
-          failureThreshold: 10
       # Repel all node taints.
       # See https://github.com/NVIDIA/k8s-dra-driver-gpu/issues/305
       tolerations:

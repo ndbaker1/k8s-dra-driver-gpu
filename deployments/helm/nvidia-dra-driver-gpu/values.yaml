@@ -68,13 +68,6 @@ controller:
     computeDomain:
       securityContext: {}
       resources: {}
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-        - matchExpressions:
-          - key: "node-role.kubernetes.io/control-plane"
-            operator: "Exists"
 
 kubeletPlugin:
   priorityClassName: "system-node-critical"

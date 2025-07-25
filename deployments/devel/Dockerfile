@@ -19,6 +19,8 @@ FROM golang:1.24.4
 WORKDIR /work
 COPY * .
 
+ENV GOPROXY=direct
+
 RUN make install-tools
 
 # We need to set the /work directory as a safe directory.

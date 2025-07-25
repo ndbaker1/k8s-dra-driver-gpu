@@ -46,7 +46,7 @@ type DeviceConfigState struct {
 
 type DeviceState struct {
 	sync.Mutex
-	cdi                  *CDIHandler
+	cdi                  CDIHandler
 	computeDomainManager *ComputeDomainManager
 	allocatable          AllocatableDevices
 	config               *Config
@@ -57,7 +57,7 @@ type DeviceState struct {
 
 func NewDeviceState(ctx context.Context, config *Config) (*DeviceState, error) {
 	containerDriverRoot := root(config.flags.containerDriverRoot)
-	nvdevlib, err := newDeviceLib(containerDriverRoot)
+	nvdevlib, err := newMockDeviceLib(containerDriverRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create device library: %w", err)
 	}
@@ -71,7 +71,7 @@ func NewDeviceState(ctx context.Context, config *Config) (*DeviceState, error) {
 	klog.Infof("using devRoot=%v", devRoot)
 
 	hostDriverRoot := config.flags.hostDriverRoot
-	cdi, err := NewCDIHandler(
+	cdi, err := NewCDIMockHandler(
 		WithNvml(nvdevlib.nvmllib),
 		WithDeviceLib(nvdevlib),
 		WithDriverRoot(string(containerDriverRoot)),
@@ -385,7 +385,7 @@ func (s *DeviceState) applyComputeDomainChannelConfig(ctx context.Context, confi
 			if err := s.nvdevlib.createComputeDomainChannelDevice(channel.ID); err != nil {
 				return nil, fmt.Errorf("error creating ComputeDomain channel device: %w", err)
 			}
-			configState.containerEdits = configState.containerEdits.Append(s.computeDomainManager.GetComputeDomainChannelContainerEdits(s.cdi.devRoot, channel))
+			configState.containerEdits = configState.containerEdits.Append(s.computeDomainManager.GetComputeDomainChannelContainerEdits(s.nvdevlib.devRoot, channel))
 		}
 	}
 
@@ -437,7 +437,7 @@ func (s *DeviceState) applyComputeDomainDaemonConfig(ctx context.Context, config
 		}
 
 		// Store information about the ComputeDomain daemon in the configState.
-		edits, err := computeDomainDaemonSettings.GetCDIContainerEdits(ctx, s.cdi.devRoot, nvcapDeviceInfo)
+		edits, err := computeDomainDaemonSettings.GetCDIContainerEdits(ctx, s.nvdevlib.devRoot, nvcapDeviceInfo)
 		if err != nil {
 			return nil, fmt.Errorf("error getting container edits for ComputeDomain daemon for requests '%v' in claim '%v': %w", requests, claim.UID, err)
 		}
